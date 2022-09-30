@@ -38,15 +38,9 @@ program
   .showHelpAfterError()
   .parse();
 
-console.log("Welcome to the backup utility!");
-
 let { alias, path, destPath, to, dryRun } = program.opts();
 
 const toRemote = to === "remote";
-
-if (dryRun) {
-  console.log("------ DRY RUN MODE ------");
-}
 
 if (!destPath) {
   destPath = path;
@@ -69,23 +63,35 @@ if (!path) {
   program.error("Path not specified. Must specify --path or --alias");
 }
 
+greet();
+
 const owner = toRemote ? "shanson" : "$USER";
 const baseCommand = `rsync -azP --chown=${owner}`;
+const excludes = getExcludes(path);
+const dry = dryRun ? "--dry-run" : "";
+const src = toRemote ? localPath(path) : remotePath(path);
+const target = toRemote ? remotePath(destPath) : localPath(destPath);
 
-const excludes = path.startsWith("dev")
-  ? "--exclude 'node_modules/*' --exclude 'tmp' --exclude 'temp' --exclude 'logs' --exclude 'Pods/*' --exclude 'build/*' --exclude 'vendor/*' --exclude '*.ipa'"
-  : path.startsWith("Dropbox")
-  ? "--exclude 'backup/*'"
-  : "";
-
-path = toRemote ? localPath(path) : remotePath(path);
-destPath = toRemote ? remotePath(destPath) : localPath(destPath);
-const command = `${baseCommand} ${excludes} ${
-  dryRun ? "--dry-run" : ""
-} "${path}" "${destPath}"`;
+const command = `${baseCommand} ${excludes} ${dry} "${src}" "${target}"`;
 
 shell.echo(command);
 shell.exec(command);
+
+function greet() {
+  console.log("Welcome to the backup utility!");
+  if (dryRun) {
+    console.log("------ DRY RUN MODE ------");
+  }
+  console.log("");
+}
+
+function getExcludes(path) {
+  return path.startsWith("dev")
+    ? "--exclude 'node_modules/*' --exclude 'tmp' --exclude 'temp' --exclude 'logs' --exclude 'Pods/*' --exclude 'build/*' --exclude 'vendor/*' --exclude '*.ipa'"
+    : path.startsWith("Dropbox")
+    ? "--exclude 'backup/*'"
+    : "";
+}
 
 function localPath(path) {
   return `$HOME/${stripLeadingTrailingSlash(path)}/`;
