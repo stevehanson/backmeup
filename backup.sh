@@ -1,7 +1,9 @@
 #!/bin/bash
 
+BASEDIR=$(dirname $0)
+
 if [ ! -d "./node_modules" ]; then
-  yarn install
+  yarn --cwd $BASEDIR install
 fi
 
-node index.js $@
+node $BASEDIR/index.js $@
