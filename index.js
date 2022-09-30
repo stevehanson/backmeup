@@ -21,7 +21,7 @@ program
   .addOption(
     new Option(
       "-d, --dest-path <path>",
-      "the relative destination path to copy to/from, defaults to --path"
+      "the destination path to copy to, defaults to --path"
     ).conflicts("alias")
   )
   .addOption(
