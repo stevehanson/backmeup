@@ -63,6 +63,9 @@ if (!path) {
   program.error("Path not specified. Must specify --path or --alias");
 }
 
+path = stripLeadingTrailingSlash(path);
+destPath = stripLeadingTrailingSlash(destPath);
+
 greet();
 
 const owner = toRemote ? "shanson" : "$USER";
@@ -94,13 +97,16 @@ function getExcludes(path) {
 }
 
 function localPath(path) {
-  return `$HOME/${stripLeadingTrailingSlash(path)}/`;
+  return `$HOME/${path}/`;
 }
 
 function remotePath(path) {
-  return `${REMOTE_DRIVE}/${stripLeadingTrailingSlash(path)}/`;
+  return `${REMOTE_DRIVE}/${path}/`;
 }
 
 function stripLeadingTrailingSlash(path) {
-  return path.replace(/\/$/, "").replace(/^\//, "");
+  return path
+    .replace(`${process.env.HOME}/`, "")
+    .replace(/\/$/, "")
+    .replace(/^\//, "");
 }
