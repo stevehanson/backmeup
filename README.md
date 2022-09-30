@@ -5,7 +5,15 @@ This is designed specifically for me but could be adapted by others if intereste
 Usage:
 
 ```
-./backup.sh [help] [--dry-run]
-```
+Usage: backmeup [options]
 
-An interactive prompt will then determine what should be backed up and the direction of the sync, either from the local machine to the shared NAS drive or from the NAS drive to the machine.
+Sync files to and from the network drive!
+
+Options:
+  --dry-run
+  -t, --to <local|REMOTE>  the destination (choices: "local", "remote", default: "remote")
+  -p, --path <path>        the local path, relative to home
+  -d, --dest-path <path>   the relative destination path to copy to/from, defaults to --path
+  -a, --alias <name>       backup with a proconfigured alias (choices: "dropbox", "drive")
+  -h, --help               display help for command
+```
