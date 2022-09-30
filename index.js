@@ -1,119 +1,100 @@
-import inquirer from "inquirer";
 import shell from "shelljs";
+import { Option, program } from "commander";
 
 const REMOTE_DRIVE = "nas:/shares/shanson";
-const isDryRun = process.argv.some((arg) => arg.includes("dry"));
-const isHelp = process.argv.some((arg) => arg.includes("help"));
+
+program
+  .name("backmeup")
+  .description("Sync files to and from the network drive!")
+  .option("--dry-run")
+  .addOption(
+    new Option("-t, --to <local|REMOTE>", "the destination")
+      .default("remote")
+      .choices(["local", "remote"])
+  )
+  .addOption(
+    new Option(
+      "-p, --path <path>",
+      "the local path, relative to home"
+    ).conflicts("alias")
+  )
+  .addOption(
+    new Option(
+      "-d, --dest-path <path>",
+      "the relative destination path to copy to/from, defaults to --path"
+    ).conflicts("alias")
+  )
+  .addOption(
+    new Option("-a, --alias <name>", "backup with a proconfigured alias")
+      .choices(["dropbox", "drive"])
+      .conflicts(["path", "dest-path"])
+  )
+  .addHelpText(
+    "afterAll",
+    "\nOther useful commands include:\n" +
+      "  ssh nas (connect to nas, can cd to /shares/shanson)\n" +
+      "  ssh nas ls /shares/shanson/dev (view files on nas)"
+  )
+  .showHelpAfterError()
+  .parse();
 
 console.log("Welcome to the backup utility!");
 
-if (isDryRun) {
+let { alias, path, destPath, to, dryRun } = program.opts();
+
+const toRemote = to === "remote";
+
+if (dryRun) {
   console.log("------ DRY RUN MODE ------");
 }
-console.log(""); // new line
 
-const usefulCommands =
-  "Other useful commands include:\n" +
-  "\tssh nas (connect to nas, can cd to /shares/shanson)\n" +
-  "\tssh nas ls /shares/shanson/dev (view files on nas)";
-
-if (isHelp) {
-  console.log('Usage: "./backup.sh [help] [--dry-run]"');
-  console.log(usefulCommands);
-  process.exit(0);
+if (!destPath) {
+  destPath = path;
 }
 
-inquirer
-  .prompt([
-    {
-      name: "type",
-      type: "checkbox",
-      message: "What would you like to sync?",
-      validate: (input) => {
-        if (!input.length) {
-          return "You must select at least one option";
-        }
+if (alias) {
+  if (alias === "dropbox") {
+    const local = "Dropbox (Personal)";
+    const remote = "Dropbox";
 
-        return true;
-      },
-      choices: [
-        { value: "dev", name: "~/dev" },
-        { value: "dotfiles", name: "dotfiles" },
-        { value: "dropbox", name: "Dropbox" },
-      ],
-    },
-    {
-      name: "destination",
-      type: "list",
-      message: "Where would you like to sync to?",
-      choices: [
-        { value: "drive", name: "Shared drive (Back up)" },
-        { value: "local", name: "Local (Sync from backup)" },
-      ],
-    },
-    {
-      name: "subdirectory",
-      type: "input",
-      when: (answers) => answers.type.length === 1,
-      message:
-        "Limit to subdirectory (type here without leading or trailing slashes?)",
-    },
-  ])
-  .then((answers) => {
-    runBackups(answers);
-  })
-  .catch((error) => {
-    console.error(error);
-  });
-
-function runBackups(answers) {
-  const backupMessage =
-    answers.destination === "drive" ? "to remote drive" : "to local drive";
-
-  if (answers.type.includes("dev")) {
-    logOperation(`Performing backup of dev directory ${backupMessage}.`);
-    runBackup(answers, "dev", "dev");
-  }
-
-  if (answers.type.includes("dotfiles")) {
-    logOperation(`Performing backup of dotfiles directory ${backupMessage}.`);
-    runBackup(answers, "dotfiles", "dotfiles");
-  }
-
-  if (answers.type.includes("dropbox")) {
-    logOperation(`Performing backup of dotfiles directory ${backupMessage}.`);
-    runBackup(answers, "Dropbox (Personal)", "Dropbox");
-  }
-
-  if (answers.type.includes("Drive")) {
-    logOperation(`Performing backup of Drive directory ${backupMessage}.`);
-    runBackup(answers, "Drive", "Drive");
+    path = toRemote ? local : remote;
+    destPath = toRemote ? remote : local;
+  } else if (alias === "drive") {
+    path = "Drive";
+    destPath = "Drive";
   }
 }
 
-function runBackup(answers, localPath, remotePath) {
-  const baseCommand = "rsync -arv";
-  const excludes = remotePath.includes("dev")
-    ? "--exclude 'node_modules/*' --exclude 'tmp' --exclude 'temp' --exclude 'logs' --exclude 'Pods/*' --exclude 'build/*' --exclude '*.ipa'"
-    : remotePath.includes("Dropbox")
-    ? "--exclude 'backup/*'"
-    : "";
-
-  const isBackup = answers.destination === "drive";
-
-  const subdirectory = answers.subdirectory ? `${answers.subdirectory}/` : "";
-  const fullRemotePath = `${REMOTE_DRIVE}/${remotePath}/${subdirectory}`;
-  const fullLocalPath = `$HOME/${localPath}/${subdirectory}`;
-  const from = isBackup ? fullLocalPath : fullRemotePath;
-  const to = isBackup ? fullRemotePath : fullLocalPath;
-  const command = `${baseCommand} ${excludes} "${from}" "${to}"`;
-
-  console.log(command);
-  if (!isDryRun) {
-    shell.exec(command);
-  }
+if (!path) {
+  program.error("Path not specified. Must specify --path or --alias");
 }
 
-function logOperation(message) {
-  console.log(`\n---- ${message} ----\n`);
+const owner = toRemote ? "shanson" : "$USER";
+const baseCommand = `rsync -azP --chown=${owner}`;
+
+const excludes = path.startsWith("dev")
+  ? "--exclude 'node_modules/*' --exclude 'tmp' --exclude 'temp' --exclude 'logs' --exclude 'Pods/*' --exclude 'build/*' --exclude 'vendor/*' --exclude '*.ipa'"
+  : path.startsWith("Dropbox")
+  ? "--exclude 'backup/*'"
+  : "";
+
+path = toRemote ? localPath(path) : remotePath(path);
+destPath = toRemote ? remotePath(destPath) : localPath(destPath);
+const command = `${baseCommand} ${excludes} ${
+  dryRun ? "--dry-run" : ""
+} "${path}" "${destPath}"`;
+
+shell.echo(command);
+shell.exec(command);
+
+function localPath(path) {
+  return `$HOME/${stripLeadingTrailingSlash(path)}/`;
+}
+
+function remotePath(path) {
+  return `${REMOTE_DRIVE}/${stripLeadingTrailingSlash(path)}/`;
+}
+
+function stripLeadingTrailingSlash(path) {
+  return path.replace(/\/$/, "").replace(/^\//, "");
 }

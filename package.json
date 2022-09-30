@@ -5,12 +5,12 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "backup": "node index.js"
+    "backup": "./backmeup"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "inquirer": "^9.1.2",
+    "commander": "^9.4.1",
     "shelljs": "^0.8.5"
   }
 }
