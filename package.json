@@ -7,6 +7,9 @@
   "scripts": {
     "backup": "./backmeup"
   },
+  "prettier": {
+    "singleQuote": false
+  },
   "author": "",
   "license": "ISC",
   "dependencies": {

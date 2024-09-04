@@ -1,5 +1,5 @@
-import shell from "shelljs";
 import { Option, program } from "commander";
+import shell from "shelljs";
 
 const REMOTE_DRIVE = "nas:/shares/shanson";
 
@@ -90,9 +90,9 @@ function greet() {
 
 function getExcludes(path) {
   return path.startsWith("dev")
-    ? "--exclude 'node_modules/*' --exclude 'tmp' --exclude 'temp' --exclude 'logs' --exclude 'Pods/*' --exclude 'build/*' --exclude 'vendor/*' --exclude '*.ipa'"
+    ? "--exclude 'node_modules' --exclude 'tmp' --exclude '_un' --exclude 'temp' --exclude 'logs' --exclude 'Pods' --exclude 'build/' --exclude 'vendor/' --exclude '*.ipa'"
     : path.startsWith("Dropbox")
-    ? "--exclude 'backup/*'"
+    ? "--exclude 'backup/'"
     : "";
 }
 
